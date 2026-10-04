@@ -3,12 +3,14 @@ export type {
   CallOptions,
   CallResult,
   ClientOptions,
+  DownloadParams,
   JmapClient,
   RequestMeta,
   RequestOptions,
   RequestResult,
   SessionChangeListener,
   SettledRequestResult,
+  UploadData,
 } from './client.js';
 export type { AuthOptions, FetchFunction } from './http.js';
 export type {
@@ -51,6 +53,7 @@ export {
   JmapRequestError,
   JmapSetError,
 } from './errors.js';
+export { expandUriTemplate } from './uri-template.js';
 export type * from './types/core.js';
 export type * from './types/generic.js';
 export type * from './types/mail.js';

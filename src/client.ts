@@ -20,7 +20,8 @@ import type {
   RequestBuilder,
   SettleableHandle,
 } from './request-builder.js';
-import type { Account, CapabilityObject, Id, Session } from './types/core.js';
+import type { Account, CapabilityObject, Id, Session, UploadResponse } from './types/core.js';
+import { expandUriTemplate } from './uri-template.js';
 
 /** RFC 8620 §3.3 Request as sent (arguments already serializable). */
 interface OutgoingRequest {
@@ -80,6 +81,18 @@ export type SettledRequestResult<Handles extends readonly AnyCallHandle[]> = {
   -readonly [K in keyof Handles]: CallResult<Awaited<Handles[K]>>;
 } & RequestMeta;
 
+export interface DownloadParams {
+  accountId: Id;
+  blobId: Id;
+  /** File name to download as. Default: the blob id. */
+  name?: string;
+  /** Media type to serve. Default `application/octet-stream`. */
+  type?: string;
+}
+
+/** Body accepted by {@link JmapClient.upload}; sent as is. */
+export type UploadData = Blob | BufferSource;
+
 export type SessionChangeListener = (session: Session) => void;
 
 export interface JmapClient {
@@ -128,6 +141,17 @@ export interface JmapClient {
     build: (builder: RequestBuilder) => Handles,
     options?: RequestOptions,
   ): Promise<SettledRequestResult<Handles>>;
+  /** Uploads a blob (RFC 8620 §6.1). */
+  upload(
+    accountId: Id,
+    data: UploadData,
+    contentType?: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<UploadResponse>;
+  /** Download URL from the session template. Needs the session to be loaded. */
+  getDownloadUrl(params: DownloadParams): string;
+  /** Downloads a blob with authentication. */
+  download(params: DownloadParams, options?: { signal?: AbortSignal }): Promise<Blob>;
 }
 
 /** Creates a JMAP client. No network request is made until it is used. */
@@ -460,6 +484,74 @@ class Client implements JmapClient {
       }
       throw error;
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Blobs
+  // -------------------------------------------------------------------------
+
+  async upload(
+    accountId: Id,
+    data: UploadData,
+    contentType?: string,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<UploadResponse> {
+    const session = await this.getSession();
+    const url = resolveUrl(expandUriTemplate(session.uploadUrl, { accountId }), this.#sessionUrl);
+    const blobType = data instanceof Blob && data.type !== '' ? data.type : null;
+    const init: RequestInit = {
+      method: 'POST',
+      headers: {
+        'Content-Type': contentType ?? blobType ?? 'application/octet-stream',
+        Accept: 'application/json',
+      },
+      body: data,
+    };
+    if (options.signal !== undefined) {
+      init.signal = options.signal;
+    }
+    const response = await this.#http.fetchOk(url, init);
+    const json = await readJson(response, url);
+    if (
+      !isRecord(json) ||
+      typeof json.blobId !== 'string' ||
+      typeof json.size !== 'number' ||
+      typeof json.type !== 'string'
+    ) {
+      throw new JmapInvalidResponseError(`Invalid upload response from ${url}`);
+    }
+    return {
+      accountId: typeof json.accountId === 'string' ? json.accountId : accountId,
+      blobId: json.blobId,
+      type: json.type,
+      size: json.size,
+    };
+  }
+
+  getDownloadUrl(params: DownloadParams): string {
+    const session = this.#requireSession();
+    return this.#expandDownloadUrl(session, params);
+  }
+
+  async download(params: DownloadParams, options: { signal?: AbortSignal } = {}): Promise<Blob> {
+    const session = await this.getSession();
+    const url = this.#expandDownloadUrl(session, params);
+    const init: RequestInit = {};
+    if (options.signal !== undefined) {
+      init.signal = options.signal;
+    }
+    const response = await this.#http.fetchOk(url, init);
+    return response.blob();
+  }
+
+  #expandDownloadUrl(session: Session, params: DownloadParams): string {
+    const expanded = expandUriTemplate(session.downloadUrl, {
+      accountId: params.accountId,
+      blobId: params.blobId,
+      name: params.name ?? params.blobId,
+      type: params.type ?? 'application/octet-stream',
+    });
+    return resolveUrl(expanded, this.#sessionUrl);
   }
 }
 
