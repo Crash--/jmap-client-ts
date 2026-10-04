@@ -1,0 +1,15 @@
+# Disposable TMail backend for the integration tests.
+# Run through `npm run test:integration`, which generates ./.runtime first.
+# Project name and 127.0.0.1-only ports keep it apart from other stacks.
+name: jmapclient-it
+
+services:
+  tmail-backend:
+    image: linagora/tmail-backend:memory-1.0.21.2
+    volumes:
+      - ./.runtime/jmap.properties:/root/conf/jmap.properties:ro
+      - ./.runtime/jwt_publickey:/root/conf/jwt_publickey:ro
+      - ./.runtime/jwt_privatekey:/root/conf/jwt_privatekey:ro
+    ports:
+      - '127.0.0.1:${JMAP_IT_JMAP_PORT:-18100}:80'
+      - '127.0.0.1:${JMAP_IT_WEBADMIN_PORT:-18101}:8000'
