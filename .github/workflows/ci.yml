@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main, v2]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  integration:
+    name: Integration tests (tmail-backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: docker pull linagora/tmail-backend:memory-1.0.21.2
+      - run: npm run test:integration
+      - name: Backend logs
+        if: failure()
+        run: docker compose -f tests/integration/docker-compose.yaml logs --no-color
