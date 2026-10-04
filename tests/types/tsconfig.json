@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [],
+    "isolatedDeclarations": false,
+    "declaration": false
+  },
+  "include": ["../../src", "."]
+}

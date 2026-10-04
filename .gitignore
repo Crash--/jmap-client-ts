@@ -1,15 +1,11 @@
 node_modules
-/lib
+/dist
+/coverage
 
-# test temporary files
-tests/jwt_publickey
-tests/jwt_privatekey
+# integration test environment
+tests/integration/.runtime
 
 # IDEs and editors
 /.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
+/.vscode
 *.sublime-workspace
