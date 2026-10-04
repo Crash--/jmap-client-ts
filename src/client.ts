@@ -13,6 +13,8 @@ import type {
   MethodPropertyName,
   NarrowedMethodResponse,
 } from './methods.js';
+import { JmapPushNotSupportedError, WebSocketPush } from './push/websocket.js';
+import type { PushConnection, WebSocketPushOptions } from './push/websocket.js';
 import { CallHandleImpl, RequestBuilderImpl } from './request-builder.js';
 import type {
   AnyCallHandle,
@@ -152,6 +154,8 @@ export interface JmapClient {
   getDownloadUrl(params: DownloadParams): string;
   /** Downloads a blob with authentication. */
   download(params: DownloadParams, options?: { signal?: AbortSignal }): Promise<Blob>;
+  /** Opens a push channel over WebSocket (RFC 8887). */
+  connectWebSocket(options?: WebSocketPushOptions): PushConnection;
 }
 
 /** Creates a JMAP client. No network request is made until it is used. */
@@ -186,6 +190,10 @@ function resolveUrl(url: string, base: string): string {
   } catch {
     return url;
   }
+}
+
+function toWebSocketUrl(url: string): string {
+  return url.replace(/^http(s?):/i, 'ws$1:');
 }
 
 function toRecordOfRecords(value: Record<string, unknown>): Record<string, CapabilityObject> {
@@ -553,6 +561,66 @@ class Client implements JmapClient {
     });
     return resolveUrl(expanded, this.#sessionUrl);
   }
+
+  // -------------------------------------------------------------------------
+  // Push
+  // -------------------------------------------------------------------------
+
+  connectWebSocket(options: WebSocketPushOptions = {}): PushConnection {
+    return new WebSocketPush({
+      options,
+      resolveUrl: () => this.#makeWebSocketUrl(),
+    });
+  }
+
+  async #makeWebSocketUrl(): Promise<string> {
+    const session = await this.getSession();
+    const capability = session.capabilities[CAPABILITIES.webSocket];
+    if (!isRecord(capability) || typeof capability.url !== 'string') {
+      throw new JmapPushNotSupportedError('The server does not support JMAP over WebSocket');
+    }
+    if (capability.supportsPush !== true) {
+      throw new JmapPushNotSupportedError('The server does not support push over WebSocket');
+    }
+    const url = new URL(toWebSocketUrl(resolveUrl(capability.url, this.#sessionUrl)));
+    const ticketEndpoint = findTicketEndpoint(session);
+    if (ticketEndpoint !== null) {
+      const ticket = await this.#fetchWebSocketTicket(resolveUrl(ticketEndpoint, this.#sessionUrl));
+      url.searchParams.set('ticket', ticket);
+    }
+    return url.toString();
+  }
+
+  async #fetchWebSocketTicket(endpoint: string): Promise<string> {
+    const response = await this.#http.fetchOk(endpoint, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    });
+    const json = await readJson(response, endpoint);
+    if (!isRecord(json) || typeof json.value !== 'string') {
+      throw new JmapInvalidResponseError(`Invalid WebSocket ticket from ${endpoint}`);
+    }
+    return json.value;
+  }
+}
+
+/** Ticket generation endpoint, at session level or in the primary account. */
+function findTicketEndpoint(session: Session): string | null {
+  const fromSession = session.capabilities[CAPABILITIES.webSocketTicket];
+  if (isRecord(fromSession) && typeof fromSession.generationEndpoint === 'string') {
+    return fromSession.generationEndpoint;
+  }
+  const accountId =
+    session.primaryAccounts[CAPABILITIES.webSocketTicket] ??
+    session.primaryAccounts[CAPABILITIES.mail];
+  const fromAccount =
+    accountId === undefined
+      ? undefined
+      : session.accounts[accountId]?.accountCapabilities[CAPABILITIES.webSocketTicket];
+  if (isRecord(fromAccount) && typeof fromAccount.generationEndpoint === 'string') {
+    return fromAccount.generationEndpoint;
+  }
+  return null;
 }
 
 function toIdMap(value: Record<string, unknown>): Record<Id, Id> {

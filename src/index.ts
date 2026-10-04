@@ -53,6 +53,17 @@ export {
   JmapRequestError,
   JmapSetError,
 } from './errors.js';
+export { JmapPushNotSupportedError } from './push/websocket.js';
+export type {
+  PushConnection,
+  PushEvents,
+  PushListener,
+  PushStatus,
+  ReconnectOptions,
+  WebSocketConstructor,
+  WebSocketLike,
+  WebSocketPushOptions,
+} from './push/websocket.js';
 export { expandUriTemplate } from './uri-template.js';
 export type * from './types/core.js';
 export type * from './types/generic.js';
