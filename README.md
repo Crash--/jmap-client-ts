@@ -1,17 +1,21 @@
 # jmap-client-ts
 
-[![npm version](https://img.shields.io/npm/v/jmap-client-ts.svg)](https://www.npmjs.com/package/jmap-client-ts)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Typed [JMAP](https://jmap.io) client for browsers and Node.js 20+.
 
-A TypeScript client for the [JMAP](https://jmap.io/spec.html) protocol (RFC 8620 / RFC 8621), with a pluggable transport layer supporting Fetch, Axios, and XMLHttpRequest.
+- JMAP core ([RFC 8620](https://www.rfc-editor.org/rfc/rfc8620)), mail
+  ([RFC 8621](https://www.rfc-editor.org/rfc/rfc8621)), WebSocket push
+  ([RFC 8887](https://www.rfc-editor.org/rfc/rfc8887)), quotas
+  ([RFC 9425](https://www.rfc-editor.org/rfc/rfc9425)) and MDN
+  ([RFC 9007](https://www.rfc-editor.org/rfc/rfc9007)).
+- Several method calls per request, with typed back-references.
+- Responses narrowed to the `properties` you ask for.
+- Extensible: declare your own methods (server extensions) with TypeScript
+  declaration merging.
+- Bring your own authentication (Bearer, Basic, cookies) and `fetch`.
+- ESM only, no runtime dependency.
 
-## Features
-
-- Full [JMAP Mail](https://jmap.io/spec-mail.html) support: Mailbox, Email, Thread, and EmailSubmission operations
-- Pluggable transport layer: use the built-in `FetchTransport`, `AxiosTransport`, or `XmlHttpRequestTransport`
-- Automatic `accountId` substitution: pass `null` as `accountId` and it resolves to the primary account
-- Session caching: fetch once, reuse across requests
-- JMAP capability detection from session response
+> Version 2 is a rewrite and is not compatible with 1.x. See the
+> [CHANGELOG](CHANGELOG.md) and the [API contract](docs/v2-api.md).
 
 ## Install
 
@@ -19,212 +23,279 @@ A TypeScript client for the [JMAP](https://jmap.io/spec.html) protocol (RFC 8620
 npm install jmap-client-ts
 ```
 
+Until 2.0 is published, install it from git (the `prepare` script builds
+`dist/`):
+
+```bash
+npm install github:linagora/jmap-client-ts#v2
+```
+
 ## Quick start
 
-```typescript
-import { Client } from 'jmap-client-ts';
-import { FetchTransport } from 'jmap-client-ts/lib/utils/fetch-transport';
+```ts
+import { assertSetSucceeded, createClient } from 'jmap-client-ts';
 
-const client = new Client({
-  sessionUrl: 'https://jmap.example.com/.well-known/jmap',
-  accessToken: 'your-bearer-token',
-  transport: new FetchTransport(fetch),
-});
-
-// Fetch and cache the JMAP session
-await client.fetchSession();
-
-// List all mailboxes (pass null for accountId to use the primary account)
-const mailboxes = await client.mailbox_get({
-  accountId: null,
-  ids: null,
-});
-console.log(mailboxes.list);
-```
-
-## API
-
-### Constructor options
-
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `sessionUrl` | `string` | Yes | JMAP session endpoint (typically `/.well-known/jmap`) |
-| `accessToken` | `string` | Yes | Bearer token for authentication |
-| `transport` | `Transport` | Yes | HTTP transport implementation |
-| `overriddenApiUrl` | `string` | No | Override the API URL from the session |
-| `httpHeaders` | `object` | No | Additional HTTP headers for all requests |
-
-### Transport implementations
-
-Choose a transport based on your environment:
-
-```typescript
-// Browser or Node.js 18+
-import { FetchTransport } from 'jmap-client-ts/lib/utils/fetch-transport';
-const transport = new FetchTransport(fetch);
-
-// Node.js with Axios
-import { AxiosTransport } from 'jmap-client-ts/lib/utils/axios-transport';
-import axios from 'axios';
-const transport = new AxiosTransport(axios);
-
-// Legacy browser environments
-import { XmlHttpRequestTransport } from 'jmap-client-ts/lib/utils/xml-http-request-transport';
-const transport = new XmlHttpRequestTransport();
-```
-
-### Session methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `fetchSession()` | `Promise<void>` | Fetches and caches the JMAP session |
-| `getSession()` | `ISession` | Returns the cached session (throws if not fetched) |
-| `getAccountIds()` | `string[]` | Returns all available account IDs |
-| `getPrimaryAccountId(capability?)` | `string` | Returns the primary account ID for a capability (defaults to `urn:ietf:params:jmap:mail`) |
-
-### Mailbox methods
-
-| Method | Description |
-|--------|-------------|
-| `mailbox_get(args)` | Get mailboxes by ID, or all if `ids: null` |
-| `mailbox_changes(args)` | Get mailbox changes since a state |
-| `mailbox_set(args)` | Create, update, or delete mailboxes |
-
-### Email methods
-
-| Method | Description |
-|--------|-------------|
-| `email_get(args)` | Get emails by ID |
-| `email_query(args)` | Query emails with filters and sorting |
-| `email_changes(args)` | Get email changes since a state |
-| `email_set(args)` | Create, update, or delete emails |
-| `email_import(args)` | Import emails from blobs |
-
-### Thread methods
-
-| Method | Description |
-|--------|-------------|
-| `thread_get(args)` | Get threads by ID |
-
-### EmailSubmission methods
-
-| Method | Description |
-|--------|-------------|
-| `emailSubmission_get(args)` | Get submission status |
-| `emailSubmission_changes(args)` | Get submission changes since a state |
-| `emailSubmission_set(args)` | Submit emails for delivery |
-
-### File upload
-
-| Method | Description |
-|--------|-------------|
-| `upload(buffer, type?)` | Upload a binary blob (for attachments), returns `{ blobId, type, size }` |
-
-## Examples
-
-### Query recent emails
-
-```typescript
-// Get the 10 most recent emails
-const result = await client.email_query({
-  accountId: null,
-  filter: { inMailbox: 'inbox-id' },
-  sort: [{ property: 'receivedAt', isAscending: false }],
-  limit: 10,
-});
-
-// Fetch full email details
-const emails = await client.email_get({
-  accountId: null,
-  ids: result.ids,
-  properties: ['from', 'subject', 'receivedAt', 'preview'],
-});
-```
-
-### Create a mailbox
-
-```typescript
-const response = await client.mailbox_set({
-  accountId: null,
-  create: {
-    newMailbox: {
-      name: 'My Folder',
-      parentId: null,
-    },
-  },
-});
-```
-
-### Send an email
-
-```typescript
-// Create a draft
-const draft = await client.email_set({
-  accountId: null,
-  create: {
-    draft: {
-      from: [{ email: 'me@example.com' }],
-      to: [{ email: 'them@example.com' }],
-      subject: 'Hello from jmap-client-ts',
-      textBody: [{ partId: '1', type: 'text/plain' }],
-      bodyValues: { '1': { value: 'Hello!' } },
-      mailboxIds: { 'outbox-id': true },
-    },
+const client = createClient({
+  sessionUrl: 'https://jmap.example.com/jmap/session',
+  auth: {
+    // Called before every HTTP request.
+    getAuthorizationHeader: async () => `Bearer ${await tokens.getAccessToken()}`,
+    // Optional: called once on HTTP 401; resolve true to retry once.
+    onUnauthorized: async () => tokens.refresh(),
   },
 });
 
-// Submit for delivery
-await client.emailSubmission_set({
-  accountId: null,
-  create: {
-    submission: {
-      emailId: draft.created!.draft.id,
-      envelope: {
-        mailFrom: { email: 'me@example.com' },
-        rcptTo: [{ email: 'them@example.com' }],
+await client.getSession();
+const accountId = client.getPrimaryAccountId(); // mail by default
+
+// One call
+const { list: mailboxes } = await client.call('Mailbox/get', { accountId, ids: null });
+const inbox = mailboxes.find(mailbox => mailbox.role === 'inbox');
+
+// Several calls in one request, with a back-reference
+const [query, emails] = await client.request(b => {
+  const q = b.call('Email/query', {
+    accountId,
+    filter: { inMailbox: inbox?.id },
+    sort: [{ property: 'receivedAt', isAscending: false }],
+    limit: 50,
+    calculateTotal: true,
+  });
+  const g = b.call('Email/get', {
+    accountId,
+    '#ids': q.ref('/ids'),
+    properties: ['subject', 'from', 'receivedAt', 'keywords', 'preview'],
+  });
+  return [q, g];
+});
+
+// emails.list is typed { id, subject, from, receivedAt, keywords, preview }[]
+console.log(query.total, emails.list[0]?.subject);
+```
+
+### Creating and sending an email
+
+```ts
+const [created, submitted] = await client.request(b => [
+  b.call('Email/set', {
+    accountId,
+    create: {
+      draft: {
+        mailboxIds: { [draftsId]: true },
+        keywords: { $draft: true, $seen: true },
+        from: [{ name: 'Bob', email: 'bob@example.com' }],
+        to: [{ name: 'Alice', email: 'alice@example.com' }],
+        subject: 'Hello',
+        bodyValues: { body: { value: 'Hi Alice' } },
+        textBody: [{ partId: 'body', type: 'text/plain' }],
       },
     },
-  },
+  }),
+  b.call('EmailSubmission/set', {
+    accountId,
+    create: { send: { identityId, emailId: '#draft' } },
+    onSuccessUpdateEmail: {
+      '#send': {
+        [`mailboxIds/${draftsId}`]: null,
+        [`mailboxIds/${sentId}`]: true,
+        'keywords/$draft': null,
+      },
+    },
+  }),
+]);
+assertSetSucceeded(created); // throws JmapSetError on notCreated/notUpdated/notDestroyed
+assertSetSucceeded(submitted);
+```
+
+Arguments are checked: a missing required argument (unless given as a
+`#back-reference`), an unknown argument or a typo in a nested object is a
+compile error.
+
+### Session
+
+```ts
+await client.getSession(); // fetched once, then cached
+await client.refreshSession();
+client.hasCapability('urn:ietf:params:jmap:quota'); // session level
+client.hasCapability('urn:ietf:params:jmap:quota', accountId); // account level
+const unsubscribe = client.onSessionChange(session => {
+  // A response carried a new sessionState: the session was re-fetched.
 });
 ```
+
+`getPrimaryAccountId`, `hasCapability` and `getDownloadUrl` are synchronous
+and throw until the session is loaded. Use `overrideApiUrl` when the session
+advertises an `apiUrl` the client cannot reach. `call`, `request`, `upload`
+and `download` accept an `AbortSignal` (`{ signal }`).
+
+### Errors
+
+| Error                       | When                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------- |
+| `JmapMethodError`           | A call answered `error` (`type`, `description`, `methodName`, `callId`, `details`) |
+| `JmapRequestError`          | Request-level problem document (`type`, `status`, `detail`, `limit`)               |
+| `JmapHttpError`             | Any other non-2xx answer (`status`, `statusText`, `body`)                          |
+| `JmapSetError`              | Thrown by `assertSetSucceeded` (`notCreated`, `notUpdated`, `notDestroyed`)        |
+| `JmapInvalidResponseError`  | The server did not answer valid JMAP                                               |
+| `JmapPushNotSupportedError` | Emitted on the push `error` event when the server has no WebSocket push            |
+
+All extend `JmapError`. `client.request` rejects with the first method
+error among the returned handles (each handle is also a thenable for its own
+call). `client.requestSettled` reports each call instead, for optional
+results:
+
+```ts
+const [emails, snippets] = await client.requestSettled(b => {
+  const q = b.call('Email/query', { accountId, filter: { text: 'invoice' } });
+  return [
+    b.call('Email/get', { accountId, '#ids': q.ref('/ids'), properties: ['subject'] }),
+    b.call('SearchSnippet/get', {
+      accountId,
+      filter: { text: 'invoice' },
+      '#emailIds': q.ref('/ids'),
+    }),
+  ];
+});
+if (emails.ok) render(emails.value.list, snippets.ok ? snippets.value.list : []);
+```
+
+## Blobs
+
+```ts
+const { blobId, size, type } = await client.upload(accountId, file); // File, Blob or BufferSource
+const url = client.getDownloadUrl({
+  accountId,
+  blobId,
+  name: 'report.pdf',
+  type: 'application/pdf',
+});
+const blob = await client.download({ accountId, blobId, name: 'report.pdf' }); // with auth
+```
+
+## Push over WebSocket
+
+```ts
+const push = client.connectWebSocket({
+  dataTypes: ['Email', 'Mailbox', 'Thread', 'EmailDelivery'], // or null for all
+  pushState: savedPushState, // optional, to resume
+  ping: { intervalMs: 30_000 }, // optional Core/echo keepalive
+});
+push.on('stateChange', change => {
+  const emailState = change.changed[accountId]?.Email;
+});
+push.on('status', status => {
+  // 'connecting' | 'open' | 'reconnecting' | 'closed'
+});
+push.on('error', error => console.warn(error));
+// later
+savedPushState = push.pushState;
+push.close();
+```
+
+The connection reconnects with exponential backoff and jitter
+(`reconnect: { initialDelayMs, maxDelayMs }`, or `false`). When the session
+advertises `com:linagora:params:jmap:ws:ticket` (Twake Mail / TMail), a fresh
+ticket is requested before each connection and passed as `?ticket=` (browsers
+cannot send an `Authorization` header on a WebSocket); otherwise cookies
+apply. Pass `WebSocket` to use another implementation.
+
+## Adding methods
+
+Server extensions are declared in `JmapMethods`. They are then available in
+`call` and `request`, with typed arguments, responses, `properties` narrowing
+and back-references:
+
+```ts
+import type { GetArgs, GetResponse, Id, SetArgs, SetResponse } from 'jmap-client-ts';
+
+export interface Label {
+  id: Id;
+  displayName: string;
+  keyword: string;
+  color: string | null;
+}
+
+declare module 'jmap-client-ts' {
+  interface JmapMethods {
+    'Label/get': {
+      capability: 'com:linagora:params:jmap:labels';
+      args: GetArgs<Label>;
+      response: GetResponse<Label>;
+    };
+    'Label/set': {
+      capability: 'com:linagora:params:jmap:labels';
+      args: SetArgs<Label>;
+      response: SetResponse<Label>;
+    };
+  }
+}
+```
+
+Types do not exist at runtime, so the client also needs the capability of
+each extension method to build `using`. Once methods are declared,
+`methodCapabilities` becomes a required option, checked against the
+declarations:
+
+```ts
+const client = createClient({
+  sessionUrl,
+  auth,
+  methodCapabilities: {
+    'Label/get': 'com:linagora:params:jmap:labels',
+    'Label/set': 'com:linagora:params:jmap:labels',
+  },
+});
+
+const labels = await client.call('Label/get', {
+  accountId,
+  ids: null,
+  properties: ['displayName'],
+});
+// labels.list: { id: string; displayName: string }[]
+```
+
+Use `extraCapabilities` (`client.call(method, args, { extraCapabilities })`)
+for capabilities that change the behaviour of built-in methods.
+
+Generic helpers for extensions: `GetArgs`, `GetResponse`, `SetArgs`,
+`SetResponse`, `ChangesArgs`, `ChangesResponse`, `QueryArgs`, `QueryResponse`,
+`QueryChangesArgs`, `QueryChangesResponse`, `CopyArgs`, `CopyResponse`,
+`PatchObject`.
+
+## Built-in methods
+
+`Core/echo`; `Mailbox/get|changes|query|queryChanges|set`;
+`Thread/get|changes`;
+`Email/get|changes|query|queryChanges|set|copy|import|parse`;
+`SearchSnippet/get`; `Identity/get|changes|set`;
+`EmailSubmission/get|changes|query|queryChanges|set`;
+`VacationResponse/get|set`; `Quota/get|changes|query|queryChanges`;
+`MDN/send|parse`.
+
+Keywords are `Record<string, true>` (custom keywords allowed). `Email`
+covers every RFC 8621 property; header properties such as
+`header:List-Id:asText` are typed by their form when requested.
 
 ## Development
 
-### Prerequisites
-
-- Node.js >= 14
-- Docker (for integration tests)
-
-### Setup
+Node 24 (`nvm use`).
 
 ```bash
-git clone https://github.com/linagora/jmap-client-ts.git
-cd jmap-client-ts
 npm install
+npm run lint              # ESLint + Prettier
+npm run typecheck         # sources, tests and type tests
+npm test                  # unit and type tests (vitest)
+npm run build             # dist/ (tsdown)
+npm run test:integration  # needs Docker
 ```
 
-### Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run build` | Compile TypeScript to `lib/` |
-| `npm run lint` | Check code formatting with ESLint + Prettier |
-| `npm run lint:fix` | Auto-fix formatting issues |
-| `npm test` | Run tests (requires Docker) |
-
-### Running tests
-
-Tests use [testcontainers](https://github.com/testcontainers/testcontainers-node) to spin up a [tmail-backend](https://github.com/linagora/tmail-backend) instance. Pull the Docker image first to avoid timeouts:
-
-```bash
-docker pull linagora/tmail-backend:memory-0.5.0
-npm test
-```
-
-### Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on commit conventions, code formatting, and the PR workflow.
+The integration tests start `linagora/tmail-backend:memory-1.0.21.2` with
+Docker Compose (project `jmapclient-it`, ports `127.0.0.1:18100` and
+`127.0.0.1:18101`, see `JMAP_IT_JMAP_PORT` / `JMAP_IT_WEBADMIN_PORT`), create
+the users through WebAdmin, and remove the containers afterwards.
+`JMAP_IT_KEEP=1` keeps them running, `JMAP_IT_EXTERNAL=1` reuses a running
+backend.
 
 ## License
 
-[MIT](LICENSE) - Linagora
+[MIT](LICENSE)
