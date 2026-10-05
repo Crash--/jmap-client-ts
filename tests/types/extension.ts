@@ -1,11 +1,11 @@
 /**
- * Declares a fictitious `Label/get` method through declaration merging, the
+ * Declares a fictitious `Note/get` method through declaration merging, the
  * way an app or a companion package would. Every type test in this folder
  * shares this augmentation.
  */
 import type { GetArgs, GetResponse, Id } from '../../src/index.js';
 
-export interface Label {
+export interface Note {
   id: Id;
   displayName: string;
   keyword: string;
@@ -14,10 +14,10 @@ export interface Label {
 
 declare module '../../src/index.js' {
   interface JmapMethods {
-    'Label/get': {
-      capability: 'com:linagora:params:jmap:labels';
-      args: GetArgs<Label>;
-      response: GetResponse<Label>;
+    'Note/get': {
+      capability: 'urn:example:params:jmap:notes';
+      args: GetArgs<Note>;
+      response: GetResponse<Note>;
     };
   }
 }
