@@ -58,11 +58,17 @@ export interface CalendarEvent {
   /** ISO 8601 duration, e.g. `PT2H0M0S`. */
   duration?: string | null;
   end?: string | null;
+  /** `start` in UTC, e.g. `2026-10-12T08:00:00Z` (tmail-backend). */
+  utcStart?: string | null;
+  /** `end` in UTC (tmail-backend). */
+  utcEnd?: string | null;
   timeZone?: string | null;
   location?: string | null;
   /** iTIP method: `REQUEST`, `REPLY`, `CANCEL`, `COUNTER`… */
   method?: string | null;
   sequence?: number | null;
+  /** `confirmed`, `tentative` or `cancelled`. */
+  status?: string | null;
   priority?: number | null;
   freeBusyStatus?: string | null;
   privacy?: string | null;
@@ -123,7 +129,8 @@ export type CalendarEventAttendanceStatus =
 
 export interface CalendarEventAttendance {
   blobId: Id;
-  attendanceStatus: CalendarEventAttendanceStatus;
+  /** Named `attendanceStatus` in the tmail-backend documentation. */
+  eventAttendanceStatus: CalendarEventAttendanceStatus;
   /** With `supportFreeBusyQuery`: no other event at that time. */
   isFree?: boolean;
 }
