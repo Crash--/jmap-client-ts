@@ -14,7 +14,7 @@ describe('README', () => {
         getAuthorizationHeader: async () => `Bearer ${await tokens.getAccessToken()}`,
         onUnauthorized: async () => tokens.refresh(),
       },
-      methodCapabilities: { 'Label/get': 'com:linagora:params:jmap:labels' },
+      methodCapabilities: { 'Note/get': 'urn:example:params:jmap:notes' },
     });
     await client.getSession();
     const accountId = client.getPrimaryAccountId();

@@ -81,18 +81,18 @@ describe('call', () => {
   });
 
   it('uses methodCapabilities for extension methods', async () => {
-    const server = makeFakeServer({ [API_URL]: apiHandler({ 'Label/get': () => ({ list: [] }) }) });
+    const server = makeFakeServer({ [API_URL]: apiHandler({ 'Note/get': () => ({ list: [] }) }) });
     const client = createClient({
       sessionUrl: SESSION_URL,
       fetch: server.fetch,
-      methodCapabilities: { 'Label/get': 'com:linagora:params:jmap:labels' },
+      methodCapabilities: { 'Note/get': 'urn:example:params:jmap:notes' },
     });
 
-    // @ts-expect-error Label/get is not declared in this compilation unit
-    await client.call('Label/get', { accountId: ACCOUNT_ID });
+    // @ts-expect-error Note/get is not declared in this compilation unit
+    await client.call('Note/get', { accountId: ACCOUNT_ID });
 
     expect(server.apiRequests()[0]!.json()).toMatchObject({
-      using: ['urn:ietf:params:jmap:core', 'com:linagora:params:jmap:labels'],
+      using: ['urn:ietf:params:jmap:core', 'urn:example:params:jmap:notes'],
     });
   });
 });

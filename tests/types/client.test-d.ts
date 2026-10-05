@@ -9,11 +9,11 @@ import type {
   MethodResponse,
   ResultReference,
 } from '../../src/index.js';
-import type { Label } from './extension.js';
+import type { Note } from './extension.js';
 
 const client = createClient({
   sessionUrl: 'https://jmap.example.com/jmap/session',
-  methodCapabilities: { 'Label/get': 'com:linagora:params:jmap:labels' },
+  methodCapabilities: { 'Note/get': 'urn:example:params:jmap:notes' },
 });
 const accountId: Id = 'a1';
 
@@ -154,29 +154,29 @@ describe('request builder', () => {
 });
 
 describe('declaration merging', () => {
-  it('adds Label/get to the known methods', async () => {
-    expectTypeOf<'Label/get'>().toExtend<JmapMethodName>();
-    const response = await client.call('Label/get', { accountId, properties: ['displayName'] });
+  it('adds Note/get to the known methods', async () => {
+    expectTypeOf<'Note/get'>().toExtend<JmapMethodName>();
+    const response = await client.call('Note/get', { accountId, properties: ['displayName'] });
     expectTypeOf(response.list[0]!).toEqualTypeOf<{ id: string; displayName: string }>();
-    expectTypeOf<MethodResponse<'Label/get'>['list']>().toEqualTypeOf<Label[]>();
+    expectTypeOf<MethodResponse<'Note/get'>['list']>().toEqualTypeOf<Note[]>();
   });
 
   it('can be combined with built-in methods in one request', async () => {
-    const [labels, mailboxes] = await client.request(b => [
-      b.call('Label/get', { accountId, ids: null }),
+    const [notes, mailboxes] = await client.request(b => [
+      b.call('Note/get', { accountId, ids: null }),
       b.call('Mailbox/get', { accountId, ids: null }),
     ]);
-    expectTypeOf(labels.list).toEqualTypeOf<Label[]>();
+    expectTypeOf(notes.list).toEqualTypeOf<Note[]>();
     expectTypeOf(mailboxes.list).toEqualTypeOf<Mailbox[]>();
   });
 
   it('requires the runtime capability of extension methods', () => {
-    // @ts-expect-error methodCapabilities must list Label/get
+    // @ts-expect-error methodCapabilities must list Note/get
     createClient({ sessionUrl: 'https://jmap.example.com/jmap/session' });
     createClient({
       sessionUrl: 'https://jmap.example.com/jmap/session',
       // @ts-expect-error capability must match the declaration
-      methodCapabilities: { 'Label/get': 'urn:ietf:params:jmap:mail' },
+      methodCapabilities: { 'Note/get': 'urn:ietf:params:jmap:mail' },
     });
   });
 });
