@@ -216,11 +216,36 @@ push (`JmapPushNotSupportedError` is emitted on `error`).
 
 ## Not in v2.0
 
-EventSource push, PushSubscription, Blob/copy, Sieve. The Linagora extensions
-(Label, Forward, Filter, Settings, EmailRecoveryAction, TMailContact,
-CalendarEvent, PublicAsset, Mailbox/clear, Quota James) ship as a separate
-entry point `jmap-client-ts/linagora` using the extension mechanism above, in a
-later step.
+EventSource push, PushSubscription, Blob/copy, Sieve.
+
+## Linagora extensions (`jmap-client-ts/linagora`)
+
+A second entry point declares the tmail-backend methods through the
+extension mechanism above (`declare module 'jmap-client-ts'`), so importing
+it makes `methodCapabilities` required; it exports
+`LINAGORA_METHOD_CAPABILITIES` (one entry per method) and
+`LINAGORA_CAPABILITIES` (URNs), plus the object and capability types.
+
+- `Label/get|changes|set`, `Forward/get|set`, `Filter/get|set`,
+  `Settings/get|set`, `EmailRecoveryAction/get|set`,
+  `TMailContact/autocomplete`, `PublicAsset/get|set`, `Mailbox/clear`,
+  `CalendarEvent/parse|accept|reject|maybe`, `CalendarEventAttendance/get`.
+- `Mailbox.namespace` (James shares) and `Identity.sortOrder` (James).
+- Singletons (`Forward`, `Settings`): `/set` without `create` nor `destroy`.
+  `Filter/set` takes `update: { singleton: Rule[] }` (the whole list, each
+  rule with an `id`), not a patch.
+- Typed as tmail-backend behaves where it differs from its documentation:
+  `EmailRecoveryAction/get|set` answer without `accountId` nor `state`;
+  recovery statuses are James task statuses (`completed`, `canceled`,
+  `canceledRequested`); `maxEmailRecoveryPerRequest` comes as a string;
+  `Filter/get` returns rules without `id`; `PublicAsset.publicURI` holds the
+  username, not the account id.
+- Not declared yet: `CalendarEventCounter/accept`,
+  `FolderFilteringAction/*` (filter capability version 2).
+
+The entry has no runtime import (`import type` only), and its own TypeScript
+programs (`src/linagora/tsconfig.json`, `tests/linagora/`) so that the core
+tests keep `methodCapabilities` optional.
 
 ## Implementation notes (2.0.0-alpha.0)
 

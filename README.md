@@ -208,24 +208,23 @@ and back-references:
 ```ts
 import type { GetArgs, GetResponse, Id, SetArgs, SetResponse } from 'jmap-client-ts';
 
-export interface Label {
+export interface Note {
   id: Id;
-  displayName: string;
-  keyword: string;
-  color: string | null;
+  title: string;
+  body: string;
 }
 
 declare module 'jmap-client-ts' {
   interface JmapMethods {
-    'Label/get': {
-      capability: 'com:linagora:params:jmap:labels';
-      args: GetArgs<Label>;
-      response: GetResponse<Label>;
+    'Note/get': {
+      capability: 'urn:example:params:jmap:notes';
+      args: GetArgs<Note>;
+      response: GetResponse<Note>;
     };
-    'Label/set': {
-      capability: 'com:linagora:params:jmap:labels';
-      args: SetArgs<Label>;
-      response: SetResponse<Label>;
+    'Note/set': {
+      capability: 'urn:example:params:jmap:notes';
+      args: SetArgs<Note>;
+      response: SetResponse<Note>;
     };
   }
 }
@@ -241,17 +240,17 @@ const client = createClient({
   sessionUrl,
   auth,
   methodCapabilities: {
-    'Label/get': 'com:linagora:params:jmap:labels',
-    'Label/set': 'com:linagora:params:jmap:labels',
+    'Note/get': 'urn:example:params:jmap:notes',
+    'Note/set': 'urn:example:params:jmap:notes',
   },
 });
 
-const labels = await client.call('Label/get', {
+const notes = await client.call('Note/get', {
   accountId,
   ids: null,
-  properties: ['displayName'],
+  properties: ['title'],
 });
-// labels.list: { id: string; displayName: string }[]
+// notes.list: { id: string; title: string }[]
 ```
 
 Use `extraCapabilities` (`client.call(method, args, { extraCapabilities })`)
@@ -261,6 +260,64 @@ Generic helpers for extensions: `GetArgs`, `GetResponse`, `SetArgs`,
 `SetResponse`, `ChangesArgs`, `ChangesResponse`, `QueryArgs`, `QueryResponse`,
 `QueryChangesArgs`, `QueryChangesResponse`, `CopyArgs`, `CopyResponse`,
 `PatchObject`.
+
+## Linagora extensions
+
+`jmap-client-ts/linagora` declares the methods of
+[tmail-backend](https://github.com/linagora/tmail-backend) (Twake Mail) and
+the James properties it ships, with their types and capabilities:
+
+| Methods                                                                           | Capability (`LINAGORA_CAPABILITIES`) |
+| --------------------------------------------------------------------------------- | ------------------------------------ |
+| `Label/get`, `Label/changes`, `Label/set`                                         | `labels`                             |
+| `Forward/get`, `Forward/set`                                                      | `forward`                            |
+| `Filter/get`, `Filter/set`                                                        | `filter`                             |
+| `Settings/get`, `Settings/set`                                                    | `settings`                           |
+| `EmailRecoveryAction/get`, `EmailRecoveryAction/set`                              | `messagesVault`                      |
+| `TMailContact/autocomplete`                                                       | `contactAutocomplete`                |
+| `PublicAsset/get`, `PublicAsset/set`                                              | `publicAssets`                       |
+| `Mailbox/clear`                                                                   | `mailboxClear` (plus mail)           |
+| `CalendarEvent/parse`, `accept`, `reject`, `maybe`, `CalendarEventAttendance/get` | `calendarEvent`                      |
+
+It also adds `Mailbox.namespace` (James shares) and `Identity.sortOrder`
+(pass `LINAGORA_CAPABILITIES.jamesIdentitySortOrder` in
+`extraCapabilities`).
+
+```ts
+import { createClient } from 'jmap-client-ts';
+import { LINAGORA_CAPABILITIES, LINAGORA_METHOD_CAPABILITIES } from 'jmap-client-ts/linagora';
+
+const client = createClient({ sessionUrl, auth, methodCapabilities: LINAGORA_METHOD_CAPABILITIES });
+await client.getSession();
+if (client.hasCapability(LINAGORA_CAPABILITIES.labels)) {
+  const { list } = await client.call('Label/get', { accountId, ids: null });
+}
+// Filter/set replaces the whole list; each rule needs an id (Filter/get omits them)
+await client.call('Filter/set', {
+  accountId,
+  update: {
+    singleton: [
+      {
+        id: '1',
+        name: 'Newsletters',
+        conditionGroup: {
+          conditionCombiner: 'AND',
+          conditions: [{ field: 'from', comparator: 'contains', value: 'news@' }],
+        },
+        action: { appendIn: { mailboxIds: [newslettersId] }, markAsSeen: true },
+      },
+    ],
+  },
+});
+```
+
+Importing the entry point declares the methods for the whole program, so
+`methodCapabilities` becomes required: spread `LINAGORA_METHOD_CAPABILITIES`
+when you declare methods of your own. What tmail-backend does differently
+from its documentation is typed as it behaves: `EmailRecoveryAction`
+responses carry neither `accountId` nor `state`, recovery statuses are James
+task statuses (`completed`, `canceled`), `maxEmailRecoveryPerRequest` may be
+a string, and rules come back from `Filter/get` without their `id`.
 
 ## Built-in methods
 
