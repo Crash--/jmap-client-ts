@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!-- The image's listeners plus the hook storing deleted emails in the vault -->
+<listeners>
+  <executeGroupListeners>true</executeGroupListeners>
+  <preDeletionHook>
+    <class>org.apache.james.vault.DeletedMessageVaultHook</class>
+  </preDeletionHook>
+</listeners>

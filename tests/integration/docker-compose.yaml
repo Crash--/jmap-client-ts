@@ -10,6 +10,8 @@ services:
       - ./.runtime/jmap.properties:/root/conf/jmap.properties:ro
       - ./.runtime/jwt_publickey:/root/conf/jwt_publickey:ro
       - ./.runtime/jwt_privatekey:/root/conf/jwt_privatekey:ro
+      - ./deletedMessageVault.properties:/root/conf/deletedMessageVault.properties:ro
+      - ./listeners.xml:/root/conf/listeners.xml:ro
     ports:
       - '127.0.0.1:${JMAP_IT_JMAP_PORT:-18100}:80'
       - '127.0.0.1:${JMAP_IT_WEBADMIN_PORT:-18101}:8000'
