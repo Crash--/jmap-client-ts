@@ -1,11 +1,12 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: { index: 'src/index.ts', linagora: 'src/linagora/index.ts' },
   format: 'esm',
   platform: 'neutral',
   target: 'es2022',
-  dts: true,
+  dts: { tsconfig: 'src/linagora/tsconfig.json' },
+  external: ['jmap-client-ts'],
   sourcemap: false,
   clean: true,
 });
