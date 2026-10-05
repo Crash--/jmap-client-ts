@@ -240,6 +240,9 @@ it makes `methodCapabilities` required; it exports
   `canceledRequested`); `maxEmailRecoveryPerRequest` comes as a string;
   `Filter/get` returns rules without `id`; `PublicAsset.publicURI` holds the
   username, not the account id.
+- `CalendarEventAttendance/get` answers `eventAttendanceStatus` (the
+  documentation says `attendanceStatus`); parsed events carry `utcStart`,
+  `utcEnd` and `status`.
 - Not declared yet: `CalendarEventCounter/accept`,
   `FolderFilteringAction/*` (filter capability version 2).
 

@@ -146,4 +146,20 @@ describe('Linagora methods', () => {
       { id: 't1', status: 'completed', successfulRestoreCount: 2, errorRestoreCount: 0 },
     ]);
   });
+
+  it('reads the attendance of an invitation as eventAttendanceStatus', async () => {
+    const { client } = makeClient({
+      'CalendarEventAttendance/get': () => ({
+        accountId: ACCOUNT_ID,
+        list: [{ blobId: '1_3', eventAttendanceStatus: 'needsAction', isFree: false }],
+      }),
+    });
+
+    const response = await client.call('CalendarEventAttendance/get', {
+      accountId: ACCOUNT_ID,
+      blobIds: ['1_3'],
+    });
+
+    expect(response.list[0]?.eventAttendanceStatus).toBe('needsAction');
+  });
 });
