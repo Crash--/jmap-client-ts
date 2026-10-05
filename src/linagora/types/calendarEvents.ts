@@ -147,3 +147,16 @@ export interface CalendarEventAttendanceGetResponse {
   notFound?: Id[] | null;
   notDone?: Record<Id, SetError> | null;
 }
+
+/** Accepts the `METHOD:COUNTER` events of the given blobs. */
+export interface CalendarEventCounterAcceptArgs {
+  accountId: Id;
+  blobIds: readonly Id[];
+}
+
+export interface CalendarEventCounterAcceptResponse {
+  accountId: Id;
+  accepted?: Id[] | null;
+  notFound?: Id[] | null;
+  notAccepted?: Record<Id, SetError> | null;
+}

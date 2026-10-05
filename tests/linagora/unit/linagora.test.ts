@@ -41,6 +41,7 @@ const METHODS: Record<LinagoraMethodName, readonly string[]> = {
   'CalendarEvent/reject': [LINAGORA_CAPABILITIES.calendarEvent],
   'CalendarEvent/maybe': [LINAGORA_CAPABILITIES.calendarEvent],
   'CalendarEventAttendance/get': [LINAGORA_CAPABILITIES.calendarEvent],
+  'CalendarEventCounter/accept': [LINAGORA_CAPABILITIES.calendarEvent],
 };
 
 describe('LINAGORA_METHOD_CAPABILITIES', () => {
@@ -161,5 +162,22 @@ describe('Linagora methods', () => {
     });
 
     expect(response.list[0]?.eventAttendanceStatus).toBe('needsAction');
+  });
+
+  it('accepts a counter proposal with CalendarEventCounter/accept', async () => {
+    const { client, sent } = makeClient({
+      'CalendarEventCounter/accept': () => ({ accountId: ACCOUNT_ID, accepted: ['1_5'] }),
+    });
+
+    const response = await client.call('CalendarEventCounter/accept', {
+      accountId: ACCOUNT_ID,
+      blobIds: ['1_5'],
+    });
+
+    expect(response.accepted).toEqual(['1_5']);
+    expect(sent()).toMatchObject({
+      using: ['urn:ietf:params:jmap:core', LINAGORA_CAPABILITIES.calendarEvent],
+      methodCalls: [['CalendarEventCounter/accept', { blobIds: ['1_5'] }, 'c0']],
+    });
   });
 });

@@ -229,7 +229,8 @@ it makes `methodCapabilities` required; it exports
 - `Label/get|changes|set`, `Forward/get|set`, `Filter/get|set`,
   `Settings/get|set`, `EmailRecoveryAction/get|set`,
   `TMailContact/autocomplete`, `PublicAsset/get|set`, `Mailbox/clear`,
-  `CalendarEvent/parse|accept|reject|maybe`, `CalendarEventAttendance/get`.
+  `CalendarEvent/parse|accept|reject|maybe`, `CalendarEventAttendance/get`,
+  `CalendarEventCounter/accept` (with `counterSupport`).
 - `Mailbox.namespace` (James shares) and `Identity.sortOrder` (James).
 - Singletons (`Forward`, `Settings`): `/set` without `create` nor `destroy`.
   `Filter/set` takes `update: { singleton: Rule[] }` (the whole list, each
@@ -243,8 +244,7 @@ it makes `methodCapabilities` required; it exports
 - `CalendarEventAttendance/get` answers `eventAttendanceStatus` (the
   documentation says `attendanceStatus`); parsed events carry `utcStart`,
   `utcEnd` and `status`.
-- Not declared yet: `CalendarEventCounter/accept`,
-  `FolderFilteringAction/*` (filter capability version 2).
+- Not declared yet: `FolderFilteringAction/*` (filter capability version 2).
 
 The entry has no runtime import (`import type` only), and its own TypeScript
 programs (`src/linagora/tsconfig.json`, `tests/linagora/`) so that the core
