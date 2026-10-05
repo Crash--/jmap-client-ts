@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "isolatedDeclarations": false,
+    "declaration": false,
+    "paths": { "jmap-client-ts": ["../../src/index.ts"] }
+  },
+  "include": ["../../src", "."]
+}

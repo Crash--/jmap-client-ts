@@ -26,6 +26,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./linagora": {
+      "types": "./dist/linagora.d.ts",
+      "default": "./dist/linagora.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
@@ -41,7 +45,7 @@
     "prepare": "tsdown",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tests/tsconfig.json && tsc --noEmit -p tests/types/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/linagora/tsconfig.json && tsc --noEmit -p tests/tsconfig.json && tsc --noEmit -p tests/types/tsconfig.json && tsc --noEmit -p tests/linagora/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts"
