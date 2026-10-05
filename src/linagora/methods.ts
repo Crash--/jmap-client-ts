@@ -17,6 +17,8 @@ import type {
   CalendarEventAcceptResponse,
   CalendarEventAttendanceGetArgs,
   CalendarEventAttendanceGetResponse,
+  CalendarEventCounterAcceptArgs,
+  CalendarEventCounterAcceptResponse,
   CalendarEventMaybeResponse,
   CalendarEventParseArgs,
   CalendarEventParseResponse,
@@ -168,6 +170,12 @@ declare module 'jmap-client-ts' {
       args: CalendarEventAttendanceGetArgs;
       response: CalendarEventAttendanceGetResponse;
     };
+    /** Only when the capability has `counterSupport`. */
+    'CalendarEventCounter/accept': {
+      capability: Capabilities['calendarEvent'];
+      args: CalendarEventCounterAcceptArgs;
+      response: CalendarEventCounterAcceptResponse;
+    };
   }
 }
 
@@ -192,7 +200,8 @@ export type LinagoraMethodName =
   | 'CalendarEvent/accept'
   | 'CalendarEvent/reject'
   | 'CalendarEvent/maybe'
-  | 'CalendarEventAttendance/get';
+  | 'CalendarEventAttendance/get'
+  | 'CalendarEventCounter/accept';
 
 /** Capabilities of the Linagora methods, as `createClient` takes them. */
 export type LinagoraMethodCapabilities = {

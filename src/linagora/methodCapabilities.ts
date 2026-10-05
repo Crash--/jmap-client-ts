@@ -42,4 +42,5 @@ export const LINAGORA_METHOD_CAPABILITIES: LinagoraMethodCapabilities = {
   'CalendarEvent/reject': calendarEvent,
   'CalendarEvent/maybe': calendarEvent,
   'CalendarEventAttendance/get': calendarEvent,
+  'CalendarEventCounter/accept': calendarEvent,
 };
